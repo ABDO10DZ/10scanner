@@ -3,3 +3,5 @@ urllib3
 portscan
 python-whois
 dnspython
+printy
+bs4
