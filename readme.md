@@ -1,7 +1,7 @@
 10scanner is command line python code webapps vulenrability scanner 
 v1 (Beta version ill updated with full functionality as described in next updates):
 <br></br><img src="https://i.ibb.co/zsMvV4z/10scanner.png" width="600" height="200"><br></br>
-
+* Notice : this still under dev , now all u can do is -a for full scan in the progress of codes i reached (info gathering ,plugins bruteforce)
 * generic info including 
 ```
  - whois,nslookup,portscan, cms detection
