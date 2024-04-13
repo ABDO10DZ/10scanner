@@ -157,7 +157,7 @@ def domains(target):
 def find_subdomains(domain):
 	subs = None
 	try:
-		api_key="9GpEVaaVOtzP8z5sNUJ6JOq1sPhBV17H"					# SecurityTrails API key
+		api_key="9GpEVaaVOtzP8z5sNUJ6JOq1sPhBV17H"					# SecurityTrails API key, u can use ur own
 		headers = {
         	"APIKEY": api_key,
         	"Accept": "application/json",
@@ -168,7 +168,7 @@ def find_subdomains(domain):
 		Jdata = json.loads(response)
 		subdomains = Jdata.get('subdomains', [])
 		for sub in subdomains:
-			sub += target
+			sub += "." + target
 			printy(f'[nb][FOUND]:@ {sub}')
 
 	except Exception as e:
