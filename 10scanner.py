@@ -6,8 +6,12 @@ import socket
 import time
 import whois
 import dns.resolver
+import json
+from bs4 import BeautifulSoup
+import re
+from printy import printy,escape
 urllib3.disable_warnings()
-output = "output.txt"
+output = None
 secs = 0
 
 info = []
@@ -16,6 +20,7 @@ themeDir = "/wp-content/themes/"
 readme = "/readme.txt"				# readme file , could be readme.md too
 target = None
 list = None
+
 username_list = "def-users.txt"
 password_list = "def-pass.txt"
 def who(target):									# whois 
@@ -23,16 +28,11 @@ def who(target):									# whois
 	w.expiration_date
 	print(w)
 	return
-def NSlookUp(target):								# NSlookup currently 
-	import dns.resolver
-	records= ["NS","SRV","PTR","TXT","SOA","A","DNSKEY","DS","APL","DHCID","CERT","NSEC","HIP","ALIAS","NAPTR","CNDSKEY","AFSDB","DNAME","CAA","AAAA","CNAME","URLFWD"]
-	for record in records:
-		answers =dns.resolver.resolve(target, "NS")
-		print(record,"dns lookup")
-		for rdata in answers:
-    			print ('Host', rdata.to_text()) #rdata.exchange, 'has preference', rdata.preference)
-		break
-def nmap_scan(target):								# port scan 
+def nmap_scan(target):								# port scan
+	if target.startswith("http://") == True or target.startswith("https://"):
+		url = re.compile(r"https?://(www\.)?")
+		target = url.sub('', target).strip().strip('/')	
+
 	ip = socket.gethostbyname(target)
 	port_range = '1,1-65535' # all Possible ports will be scaned
 	print("[*] Luanching port scan on ",target,":",ip," ports:",port_range)
@@ -40,28 +40,36 @@ def nmap_scan(target):								# port scan
 	scanner = PortScan(ip, port_range, thread_num=500, show_refused=False, wait_time=1, stop_after_count=True)
 	open_port_discovered = scanner.run()  # <----- actual scan
 	for port in open_port_discovered:
-		print("PORT \t ", port , " \t open")
+		printy(f"[nB][FOUND]:@ {port}")
 	
 	print("[*] Luanching CMS scan in 5 Seconds ...")
 	time.sleep(5)
 	return
 
-def log(file,data):									# log
+def log(file,data):
+	if file == None:
+		return
 	with open(file, "a") as myfile:
 		myfile.write(data+"\n")
 	return
 
-def request(target,body,timeout=3,ua="10",method=0):
-	response = [None,None,None]
-	r = None
-	if method == 0:
-		r = requests.get(target,headers=ua,data=body,timeout=int(timeout),verify=False)
-	else :
-		r = requests.post(target,headers=ua,json=body,timeout=int(timeout),verify=False)	# json post
-	response[0] = r.headers 
-	response[1] = r.text
-	response[2]	= r.status_code
-	return response
+def request(target,headers,body,isJson=True,timeout=3,method=0):
+	try:
+		response = [None,None,None]
+		r = None
+		if method == 0:
+			r = requests.get(target,headers=headers,data=body,timeout=int(timeout),verify=False)
+		else :
+			r = requests.post(target,headers=headers,json=body,timeout=int(timeout),verify=False)	# json post
+		response[0] = r.headers			# return headers , detect webserver/phpv 
+
+		response[1] = r.text			# return response
+		response[2]	= r.status_code		# http status code
+		return response
+	except Exception as e:
+		print("Exception:",e)
+		pass
+	return False
 def check(Target,timeout):							# brute forcer
 	try:
 		user_agent = {'User-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0'}
@@ -73,34 +81,39 @@ def check(Target,timeout):							# brute forcer
 		print("Exception:",e)	# if had an exception 
 		pass
 	return False
-def plugins(target,list="wp-plugins.lst"):
-	plugins_file = open(list, 'r')  # https://raw.githubusercontent.com/RandomRobbieBF/wordpress-plugin-list/main/wp-plugins.lst (wipe all /wp-content/plugins/ and /readme.txt) - leave only plugin name (easy with find and replace)
+def plugins(target,lista="wp-plugins.lst"):
+	if target.startswith("http://") is False and target.startswith("https://") is False:
+		target = "http://" + target
+	printy(f"starting [nB]Plugins@ scan...")
+	time.sleep(5)
+	plugins_file = open(lista, 'r')  # https://raw.githubusercontent.com/RandomRobbieBF/wordpress-plugin-list/main/wp-plugins.lst (wipe all /wp-content/plugins/ and /readme.txt) - leave only plugin name (easy with find and replace)
 	plugins = plugins_file.readlines()
-	log(output,"enum plugins started \n")
 	for plugin in plugins:
 		plugin = plugin.strip()
 		print("[*] checking ",target+Dir+plugin)
 		if(check(target+Dir+plugin+"/",secs)):
 			if (check(target+Dir+plugin+readme,secs)):
-				print("[+] Found :",plugin,"readme.txt readable :",target+Dir+plugin+readme)
+				printy(f"[nB][FOUND]:@ {plugin} [gB][readme.txt]@ {target+Dir+plugin+readme}")
 				log(output,target+Dir+plugin+readme)
 			else :
-				print("[+] Found :", plugin , "readme.txt missed/unreadable :",target+Dir+plugin)
+				print(f"[nB][FOUND]:@ {plugin} [rB][readme.txt]@ {target+Dir+plugin}")
 				log(output,target+Dir+plugin)
 	return
-def themes(target,list="wp-themes.lst"):
-	themes_file = open(list, 'r')  # https://raw.githubusercontent.com/RandomRobbieBF/wordpress-plugin-list/main/wp-plugins.lst (wipe all /wp-content/plugins/ and /readme.txt) - leave only plugin name (easy with find and replace)
+def themes(target,lista="wp-themes.lst"):
+	if target.startswith("http://") is False and target.startswith("https://") is False:
+		target = "http://" + target
+	themes_file = open(lista, 'r')
 	themes = themes_file.readlines()
-	log(output,"enum themes started \n")
+	printy(f"starting [nB]themes@ scan...")
 	for theme in themes:
 		theme = theme.strip()
 		print("[*] checking ",target+themeDir+theme)
 		if(check(target+themeDir+theme+"/",secs)):
 			if (check(target+themeDir+theme+readme,secs)):
-				print("[+] Found :",theme,"readme.txt readable :",target+themeDir+theme+readme)
+				printy(f"[nB][FOUND]:@ {theme} [gB][readme.txt]@ {target+themeDir+theme+readme}")
 				log(output,target+themeDir+theme+readme)
 			else :
-				print("[+] Found :", theme , "readme.txt missed/unreadable :",target+themeDir+theme)
+				printy(f"[nB][FOUND]:@ {theme} [rB][readme.txt]@ {target+themeDir+theme}")
 				log(output,target+themeDir+theme)
 	return
 def login(target,usernames,passwords):
@@ -127,15 +140,49 @@ def detect_cms(target):
 		info[2] = "Unknown"
 
 	return
-def get_info(address):
-	who(address)
-	NSlookUp(address)
-	nmap_scan(address)
-	return True
-def subdomains(target):
+
+def lookup(target):
+	printy("Luanching [nB]records lookup@")
+	name_server = '8.8.8.8'
+	ADDITIONAL_RDCLASS = 65535
+	request = dns.message.make_query(target, dns.rdatatype.ANY)
+	request.flags |= dns.flags.AD
+	request.find_rrset(request.additional, dns.name.root, ADDITIONAL_RDCLASS,dns.rdatatype.OPT, create=True, force_unique=True)       
+	response = dns.query.udp(request, name_server)
+	print("lookup response:",response)
 	return
 def domains(target):
+	#soon
 	return
+def find_subdomains(domain):
+	subs = None
+	try:
+		api_key="9GpEVaaVOtzP8z5sNUJ6JOq1sPhBV17H"					# SecurityTrails API key
+		headers = {
+        	"APIKEY": api_key,
+        	"Accept": "application/json",
+			"User-Agent": "10"
+    	}
+		url = "https://api.securitytrails.com/v1/domain/"+domain+"/subdomains?children_only=false&include_inactive=true"
+		response = request(url,headers,None)[1]
+		Jdata = json.loads(response)
+		subdomains = Jdata.get('subdomains', [])
+		for sub in subdomains:
+			sub += target
+			printy(f'[nb][FOUND]:@ {sub}')
+
+	except Exception as e:
+		printy(f"[rB]Exception[subdomains]:@ {e}")
+	return subs
+
+def get_info(address):
+	who(address)
+	lookup(target)
+	domains(target)
+	find_subdomains(target)
+	nmap_scan(target)
+	return True
+
 def main():
 	if len(sys.argv)<4:
 		print(sys.argv[0],"-u <url> -t <timeout>  -o <output> (other options)\n\n")
@@ -157,7 +204,7 @@ def main():
 
 		sys.exit(0)
 	# modes 
-	generic = True 			# defualt true (if this true all the rest will be ignored even false)
+	generic = False
 	
 	info = False			# info gathering
 
@@ -169,46 +216,49 @@ def main():
 	btype = None 					# contains strings plugins|themes|login
 	global target,username_list,password_list,list,secs,output
 	for x in range(len(sys.argv)):
-		if sys.argv[x] == "-u" or sys.argv == "--url":
+		if sys.argv[x] == "-u" or sys.argv[x] == "--url":
 			target = sys.argv[x+1]
-		elif sys.argv[x] == "-t" or sys.argv == "--timeout":
+		elif sys.argv[x] == "-t" or sys.argv[x] == "--timeout":
 			secs = sys.argv[x+1] # timeout connect
-		elif sys.argv[x] == "-o" or sys.argv == "--output":
+		elif sys.argv[x] == "-o" or sys.argv[x] == "--output":
 			output = sys.argv[x+1]
-		elif sys.argv[x] == "-th" or sys.argv == "--threads":
+		elif sys.argv[x] == "-th" or sys.argv[x] == "--threads":
 			threads = sys.argv[x+1]
-		elif sys.argv[x] == "-br" or sys.argv == "--bruteforce":
+		elif sys.argv[x] == "-br" or sys.argv[x] == "--bruteforce":
 			btype = sys.argv[x+1]
 			if btype == "plugins" or btype == "themes":
-				list = sys.argv[x+1]
+				list = sys.argv[x+2]
 			elif btype == "login":
 				username_list = sys.argv[x+2]
 				password_list = sys.argv[x+3]
 
 			list = sys.argv[x+2]
-		elif sys.argv[x] == "-v" or sys.argv == "--vulnerability-mapping":
+		elif sys.argv[x] == "-v" or sys.argv[x] == "--vulnerability-mapping":
 			cmspath = sys.argv[x+1]
 			vulnerability_mapping = True
-		elif sys.argv[x] == "-aiv" or sys.argv == "--ai-vulnerability-map":
+		elif sys.argv[x] == "-aiv" or sys.argv[x] == "--ai-vulnerability-map":
 			cmspath = sys.argv[x+1]
 			Ai_vulnerability_map = True
-		elif sys.argv[x] == "-pv" or sys.argv == "--pub-vulnerability-map":
+		elif sys.argv[x] == "-pv" or sys.argv[x] == "--pub-vulnerability-map":
 			public_vulnerability_map = True
-		elif sys.argv[x] == "-d" or sys.argv == "--dirmap":
+		elif sys.argv[x] == "-d" or sys.argv[x] == "--dirmap":
 			dirmap = True
-		elif sys.argv[x] == "-i" or sys.argv == "--info":
+		elif sys.argv[x] == "-i" or sys.argv[x] == "--info":
 			info = True
-		elif sys.argv[x] == "-a" or sys.argv == "--all":
+		elif sys.argv[x] == "-a" or sys.argv[x] == "--all":
 			generic = True
-		
+
 	print("luanching scan on :",target,"timeout:",secs,"output:",output)
 	time.sleep(5)
 	if generic == True or info == True:
 		get_info(target)
 
 	# brute force types 
-	if btype == "plugins":
-		plugins(target,list)
+	if btype == "plugins" or generic == True:
+		if list == None:
+			plugins(target)
+		else:
+			plugins(target,list)
 	elif btype == "themes":
 		themes(target,list)
 	elif btype == "login":
