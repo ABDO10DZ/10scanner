@@ -1,0 +1,27 @@
+{
+  "title":"a configuration json foramted file , that tool may use later",
+  "conf":{
+    
+    "lists":{
+      "path":"./lists/",
+      "wordpress":{
+        "plugins":"wp-plugins.txt",
+        "themes":"wp-themes.txt"
+      },
+      "joomla":{
+        "plugins":"jo-plugins.txt",
+        "themes":"jo-themes.txt"
+      },
+      "login":{
+        "userlist":"users.txt",
+        "passlist":"pass.txt"
+      }
+    },
+    "vulnerabilities":{
+      "rce":1,
+      "ssrf":1,
+      "xss":0
+    },
+    "CVE-Database":"https://services.nvd.nist.gov/rest/json/cves/2.0"
+  }
+}
