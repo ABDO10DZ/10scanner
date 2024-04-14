@@ -28,3 +28,4 @@ python 10scanner.py -u target.com -a
  - could be add webpanel work related with 10scanner commandline.
 
 this tool may simplify ur work and short time for u , but it sure manual testing is always best.
+<br><br><a href="https://hits.seeyoufarm.com"><img src="https://hits.seeyoufarm.com/api/count/incr/badge.svg?url=https%3A%2F%2Fgithub.com%2FABDO10DZ%2F10scanner&count_bg=%23F00444&title_bg=%23251212&icon=&icon_color=%23BCAEAE&title=views&edge_flat=false"/></a>
