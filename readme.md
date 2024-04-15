@@ -17,7 +17,7 @@ python 10scanner.py -u target.com -a
 * themes,plugins bruteforce 
 * login bruteforce 
 ```
-* vulnerability mapping
+* vulnerability mapping ( <a href="https://wp-cli.org/"> WP-CLI</a> is required !)
 ```
  * CMS old vulnerabilities
   - checking current core & plugin versions and look for potential public flaw 
